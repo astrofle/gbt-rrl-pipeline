@@ -214,7 +214,7 @@ def freq2vel(cubefile, line, z=0):
     return fileout
 
 
-def grid_map_data(sdfitsfile, nx, ny, scale):
+def grid_map_data(sdfitsfile, nx, ny, scale, xcntr, ycntr):
     """
     """
 
@@ -223,6 +223,7 @@ def grid_map_data(sdfitsfile, nx, ny, scale):
     args = ['gbtgridder', '--noline', '--nocont',
             '-o', fileout, '--clobber', 
             '--size', f'{nx}', f'{ny}', '--pixelwidth', f'{scale}',
+            '--mapcenter', f'{xcntr}', f'{ycntr}',
             '--kernel', 'gaussbessel',
             sdfitsfile]
     subprocess.run(args)

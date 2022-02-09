@@ -32,7 +32,7 @@ def remove_continuum(freq, data, poly_order, blanks=None):
     return (data - pval)
 
 
-def run(table, poly_order, lines):
+def run(table, poly_order, lines, tcal=None):
     """
     """
 
@@ -71,7 +71,10 @@ def run(table, poly_order, lines):
                               np.ma.masked_invalid(table['DATA'][i]), 
                               poly_order,
                               blanks)
-        cal_data[i] = tl/gtcal_val*table['TCAL'][i]
+        if tcal is None:
+            cal_data[i] = tl/gtcal_val*table['TCAL'][i]
+        else:
+            cal_data[i] = tl/gtcal_val*tcal
 
     # Update the table data column.
     table['DATA'] = cal_data

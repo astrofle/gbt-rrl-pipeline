@@ -34,6 +34,10 @@ def pipeline(filein, outdir, ifnums, plnums, rod, vbank, settings):
     map_scans = np.unique(sscans[mask])
     print(f"Will process the following scans: {map_scans}")
 
+    # Load the user computed Tcal values.
+    if settings.tcal_file is not None:
+        print("Loading Tcal values.")
+        tcal_arr = np.load(settings.tcal_file)
 
     proc_files = []
     # Loop over spectral window and polarization.
@@ -50,12 +54,14 @@ def pipeline(filein, outdir, ifnums, plnums, rod, vbank, settings):
             print("Finding RRLs.")
             lines = utils.find_rrls(freq[0], settings.line, settings.vel_range, z=settings.z)
 
+            tcal = tcal_arr[ifnum,plnum]
+
             # Loop over lines.
             for n,chans in lines.items():
                 print(f"Processing line: {settings.line} n={n}")
                 table_rrl = utils.split_channel_range(table, chans[0], chans[1], dch=1)
                 print("Calibrating scans.")
-                table_rrl = calibrate.run(table_rrl, settings.cal_poly_order, settings.blank_lines)
+                table_rrl = calibrate.run(table_rrl, settings.cal_poly_order, settings.blank_lines, tcal=tcal)
                 print("Flagging RFI.")
                 rfi_file_path = f"{outdir}/spw_{ifnum}_pol_{plnum}_n_{n}"
                 rfi_file = f"{rfi_file_path}_rfi.fits"
