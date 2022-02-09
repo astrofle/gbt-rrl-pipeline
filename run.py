@@ -3,7 +3,6 @@ import numpy as np
 
 from groundhog import sd_fits, spectral_axis
 
-#import settings
 from rrlpipe import utils
 from rrlpipe.operations import calibrate, rfi_flag
 
@@ -62,19 +61,13 @@ def pipeline(filein, outdir, ifnums, plnums, rod, vbank, settings):
                 rfi_file = f"{rfi_file_path}_rfi.fits"
                 table_rfi = rfi_flag.run(table_rrl, settings.lua_strategy, rfi_file_path, header)
                 
-                #try:
-                #    print("Correcting bandpass.")
-                #    rrlfile = utils.flatten_bandpass(rfi_file, v_line=settings.v_center, dv_line=settings.dv, poly_order=settings.bp_poly_order)
-                #except TypeError:
-                #    print("All channels flagged.")
-                #    continue
                 print("Producing report.")
                 utils.make_report(rfi_file)
                 proc_files.append(rfi_file)
                 print("Gridding.")
                 print(f"Will grid: {rfi_file}")
                 cubefile = utils.grid_map_data(rfi_file, settings.npix_x, settings.npix_y, settings.pix_scale)
-                cubefile = utils.freq2vel(cubefile, line=settings.line, z=settings.z)
+                cubefile = utils.freq2vel(cubefile, line=settings.line, z=0)
                 print(f"Gridded data is in: {cubefile}")
 
     
@@ -87,16 +80,16 @@ def pipeline(filein, outdir, ifnums, plnums, rod, vbank, settings):
 
 if __name__ == "__main__":
     
-    import settings_800 as settings
+    import settings_800_01 as settings
 
-    for session in ['02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13']:
+    project = 'AGBT22A_437'
+
+    for session in ['01']:
         for vbank in ['A', 'B']:
             for rod in ['Ra', 'Dec']:
                 ifnums = settings.vbanks[vbank]
                 plnums = [0,1]
-                #rod = 'Dec'
-                project = 'AGBT21A_292'
                 projid = f'{project}_{session}'
                 filein = f'/home/sdfits/{projid}/{projid}.raw.vegas/{projid}.raw.vegas.{vbank}.fits'
-                outdir = f'/home/scratch/psalas/projects/CygnusX/data/tcal/hrrl-pipe-v2/{session}/{rod}/'
+                outdir = f'/home/scratch/psalas/projects/GDIGS-Low/data/target/{session}/{rod}/'
                 pipeline(filein, outdir, ifnums, plnums, rod, vbank, settings)

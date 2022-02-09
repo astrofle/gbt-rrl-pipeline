@@ -206,7 +206,10 @@ def freq2vel(cubefile, line, z=0):
 
     fileout = f"{os.path.splitext(cubefile)[0]}_vel.fits"
     shutil.copyfile(cubefile, fileout)
-    cube2vel.cube2vel(fileout, transition=line, z=z, f_col=3, v_col=3)
+    cube2vel.cube2vel(fileout, transition=line, z=z, f_col=3, v_col=3, unit='km/s')
+    # Remove original.
+    if os.path.isfile(cubefile):
+        os.remove(cubefile)
 
     return fileout
 
@@ -246,12 +249,12 @@ def make_line_list(sdfitsfiles, line_list_file, rms_vmin, rms_vmax, line_vmin, l
         sdfits.load(f)
         table = sdfits.hdu[1][:]
         freq = spectral_axis.compute_freq_axis(table, chstart=1, chstop=-1, apply_doppler=True)
-        nu_min = crrls.vel2freq(freq[0].to('MHz').value.mean(), rms_vmin)
-        nu_max = crrls.vel2freq(freq[0].to('MHz').value.mean(), rms_vmax)
+        nu_min = crrls.vel2freq(freq[0].to('MHz').value.mean(), rms_vmin.to('m/s').value)
+        nu_max = crrls.vel2freq(freq[0].to('MHz').value.mean(), rms_vmax.to('m/s').value)
         ch_min = np.argmin(abs(freq[0].to('MHz').value - nu_min))
         ch_max = np.argmin(abs(freq[0].to('MHz').value - nu_max))
         ch_min,ch_max = np.sort([ch_min,ch_max])
-        avg = np.nanmean(table['DATA'], axis=0)
+        avg = np.ma.masked_invalid(np.nanmean(table['DATA'], axis=0))
         rms = avg[ch_min:ch_max+1].std()
         line_list[i] = (spw, pol, n, rms, 0, f)
 
@@ -274,8 +277,8 @@ def make_line_list(sdfitsfiles, line_list_file, rms_vmin, rms_vmax, line_vmin, l
             sdfits.load(row[5])
             table = sdfits.hdu[1][:]
             freq = spectral_axis.compute_freq_axis(table, chstart=1, chstop=-1, apply_doppler=True)
-            nu_min = crrls.vel2freq(freq[0].to('MHz').value.mean(), line_vmin)
-            nu_max = crrls.vel2freq(freq[0].to('MHz').value.mean(), line_vmax)
+            nu_min = crrls.vel2freq(freq[0].to('MHz').value.mean(), line_vmin.to('m/s').value)
+            nu_max = crrls.vel2freq(freq[0].to('MHz').value.mean(), line_vmax.to('m/s').value)
             ch_min = np.argmin(abs(freq[0].to('MHz').value - nu_min))
             ch_max = np.argmin(abs(freq[0].to('MHz').value - nu_max))
             ch_min,ch_max = np.sort([ch_min,ch_max])

@@ -160,7 +160,7 @@ def run(table, strategy, path, header):
     flags = hdu[1]['DATA'][:][:,0,0,0,:] == 1e20
     # Extend the flags.
     flags = extend_flags(flags, threshold=1.1)
-    print(f"Number of channels totally flagged {(eflags.sum(axis=0)/len(eflags) == 1).sum()}/{eflags.shape[1]}")
+    print(f"Number of channels totally flagged {(flags.sum(axis=0)/len(flags) == 1).sum()}/{flags.shape[1]}")
     # Apply flags to the data.
     masked_data = np.ma.masked_where(flags, table['DATA'])
     table['DATA'] = masked_data.filled(np.nan)
