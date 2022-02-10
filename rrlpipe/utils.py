@@ -200,13 +200,14 @@ def flatten_bandpass(sdfitsfile, v_line, dv_line, poly_order):
     return fileout
   
 
-def freq2vel(cubefile, line, z=0):
+def freq2vel(cubefile, line, z=0, qnidx=0):
     """
     """
 
     fileout = f"{os.path.splitext(cubefile)[0]}_vel.fits"
     shutil.copyfile(cubefile, fileout)
-    cube2vel.cube2vel(fileout, transition=line, z=z, f_col=3, v_col=3, unit='km/s')
+    cube2vel.cube2vel(fileout, transition=line, z=z, 
+                      f_col=3, v_col=3, unit='km/s', qnidx=qnidx)
     # Remove original.
     if os.path.isfile(cubefile):
         os.remove(cubefile)
