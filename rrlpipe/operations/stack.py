@@ -101,18 +101,18 @@ def stack_cubes(cubes, rms_vmin, rms_vmax, output, overwrite=False,
 
     # Write the n map.
     n_map_out = f'{os.path.splitext(output)[0]}_n.fits'
-    fits.writeto(n_map_out, n_map, header=cube.wcs.celestial.to_header())
+    fits.writeto(n_map_out, n_map.filled(np.nan), header=cube.wcs.celestial.to_header())
 
 
 
-def smooth_and_interpolate(cube_list, cube_vmin, cube_vmax, cube_dv,
+def smooth_and_interpolate(cube_list, vmin, vmax, dv,
                            replace_nans=True):
     """
     """
 
-    vel_axis = np.arange(cube_vmin.to('m/s').value,
-                         (cube_vmax+cube_dv).to('m/s').value,
-                         cube_dv.to('m/s').value) * u.m/u.s
+    vel_axis = np.arange(vmin.to('m/s').value,
+                         (vmax+dv).to('m/s').value,
+                         dv.to('m/s').value) * u.m/u.s
     vgrid_cubes = []
 
     # Smooth and grid the spectral axis of the cubes 
@@ -138,7 +138,9 @@ def smooth_and_interpolate(cube_list, cube_vmin, cube_vmax, cube_dv,
         new_cube.write(fnm_out, format='fits')
         vgrid_cubes.append(fnm_out)
 
-    return vgrid_cubes
+    shape = new_cube.shape
+
+    return vgrid_cubes, shape
 
 
 def run(path, line_list_file, cube_vmin, cube_vmax, cube_dv, 
@@ -157,7 +159,6 @@ def run(path, line_list_file, cube_vmin, cube_vmax, cube_dv,
                   for fnm in line_list['file'][line_list['use']] ]
     print(f"Will stack {len(cube_list)} cubes.")
 
-    cube_list = smooth_and_interpolate(cube_list, cube_vmin, cube_vmax, cube_dv)
+    cube_list, shape = smooth_and_interpolate(cube_list, cube_vmin, cube_vmax, cube_dv)
 
-    stack_cubes(cube_list, cube_vmin, cube_vmax, cube_dv, 
-                rms_vmin, rms_vmax, output)
+    stack_cubes(cube_list, rms_vmin, rms_vmax, f'{path}/{output}', shape=shape)

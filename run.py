@@ -98,13 +98,13 @@ if __name__ == "__main__":
     project = 'AGBT22A_437'
 
     for session in ['01']:
-        for rod in ['Ra', 'Dec']:
+        for rod in ['Dec']:
             for vbank in ['A', 'B']:
                 ifnums = settings.vbanks[vbank]
                 plnums = [0,1]
                 projid = f'{project}_{session}'
                 filein = f'/home/sdfits/{projid}/{projid}.raw.vegas/{projid}.raw.vegas.{vbank}.fits'
-                outdir = f'/home/scratch/psalas/projects/GDIGS-Low/data/target_v2/{session}/{rod}/'
+                outdir = f'/home/scratch/psalas/projects/GDIGS-Low/data/target-v2/{session}/{rod}/'
                 pipeline(filein, outdir, ifnums, plnums, rod, vbank, settings)
 
             print('Stacking.')
