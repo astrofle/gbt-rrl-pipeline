@@ -4,20 +4,29 @@ Stacking functions for GBT-RRL-pipe.
 
 import os
 import glob
-#import warnings
+import warnings
 import numpy as np
 
 from astropy.io import fits
 from astropy import units as u
 from spectral_cube import SpectralCube
 from spectral_cube.masks import BooleanArrayMask
-#from spectral_cube.utils import SpectralCubeWarning
+from spectral_cube.utils import PossiblySlowWarning, StokesWarning
 from astropy.convolution import Gaussian1DKernel, interpolate_replace_nans
 
 from rrlpipe import utils
 
 
 fwhm_factor = np.sqrt(8*np.log(2))
+
+# Ignore warnings from SpectralCube about it being slow.
+warnings.filterwarnings(action='ignore', 
+                        category=PossiblySlowWarning,
+                        append=True)
+# And about Stokes cubes.
+warnings.filterwarnings(action='ignore', 
+                        category=StokesWarning,
+                        append=True)
 
 
 def interpolate_nans_cube(cube, kernel):
