@@ -1,6 +1,8 @@
 
 import numpy as np
 
+from astropy.convolution import convolve
+
 from groundhog import sd_fits_utils, spectral_axis
 
 from rrlpipe import utils
@@ -32,7 +34,7 @@ def remove_continuum(freq, data, poly_order, blanks=None):
     return (data - pval)
 
 
-def run(table, poly_order, lines, tcal=None):
+def cal_no_ref(table, poly_order, lines, tcal):
     """
     """
 
@@ -67,8 +69,8 @@ def run(table, poly_order, lines, tcal=None):
     # Calibrate all rows.
     cal_data = np.ma.empty(table['DATA'].shape, dtype=table['DATA'].dtype)
     for i in range(len(table)):
-        tl = remove_continuum(freq[i], 
-                              np.ma.masked_invalid(table['DATA'][i]), 
+        tl = remove_continuum(freq[i],
+                              np.ma.masked_invalid(table['DATA'][i]),
                               poly_order,
                               blanks)
         if tcal is None:
@@ -79,6 +81,59 @@ def run(table, poly_order, lines, tcal=None):
     # Update the table data column.
     table['DATA'] = cal_data
 
+    return table
+
+
+def cal_refsmo(table, ref_table, tcal, kernel):
+    """
+    """
+
+
+    mask_on = sd_fits_utils.get_table_mask(ref_table, cal='T')
+    mask_off = sd_fits_utils.get_table_mask(ref_table, cal='F')
+
+    # Compute system temperature at reference position.
+    tsys = tcal/(ref_table['DATA'][mask_on]/ref_table['DATA'][mask_off] - 1.)
+
+    tint_on = ref_table['EXPOSURE'][mask_on][:,np.newaxis]
+    tint_off = ref_table['EXPOSURE'][mask_off][:,np.newaxis]
+
+    # Average the system temperature in time.
+    tsys_avg = np.ma.average(tsys, axis=0, weights=(tint_on+tint_off)*np.power(tsys, -2.))
+    # Average the system temperature over the inner 80% of the band.
+    tsys_avg = tsys_avg[int(0.1*len(tsys_avg)):int(0.9*len(tsys_avg))].mean()
+
+    # Average the counts at the reference position with the noise diode on and off.
+    p_ref_on = np.ma.average(ref_table['DATA'][mask_on], axis=0, weights=tint_on*np.power(tsys, -2.))
+    p_ref_off = np.ma.average(ref_table['DATA'][mask_on], axis=0, weights=tint_off*np.power(tsys, -2.))
+    
+    # Smooth the reference spectra.
+    if kernel is not None:
+        p_ref_on = convolve(p_ref_on, kernel)
+        p_ref_off = convolve(p_ref_off, kernel)
+        
+    # Calibrate the data.
+    mask_on = sd_fits_utils.get_table_mask(table, cal='T')
+    cal_data_on = (table['DATA'][mask_on] - p_ref_on[np.newaxis,:])/p_ref_on[np.newaxis,:] * (tsys_avg + tcal) - tcal
+    mask_off = sd_fits_utils.get_table_mask(table, cal='F')
+    cal_data_off = (table['DATA'][mask_off] - p_ref_off[np.newaxis,:])/p_ref_off[np.newaxis,:] * tsys_avg
+
+    # Update the data and system temperature.
+    table['DATA'][mask_on] = cal_data_on
+    table['DATA'][mask_off] = cal_data_off   
+    table['TSYS'] = tsys_avg
+
+    return table 
+
+
+def run(args, mode='no-ref'):
+    """
+    """
+
+    modes = {'no-ref': cal_no_ref,
+             'refsmo': cal_refsmo}
+
+    table = modes[mode](*args)
 
     return table
     

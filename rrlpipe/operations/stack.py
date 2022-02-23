@@ -3,6 +3,7 @@ Stacking functions for GBT-RRL-pipe.
 """
 
 import os
+import sys
 import glob
 import warnings
 import numpy as np
@@ -166,7 +167,10 @@ def run(path, line_list_file, cube_vmin, cube_vmax, cube_dv,
     # Stack only the cubes with low rms and flat bandpass over line free channels.
     cube_list = [ f'{os.path.splitext(fnm)[0]}_cube_vel.fits' \
                   for fnm in line_list['file'][line_list['use']] ]
-    print(f"Will stack {len(cube_list)} cubes.")
+    print(f"Will stack {len(cube_list)}/{len(line_list)} cubes.")
+    if len(cube_list) == 0:
+        print('No cubes to stack.')
+        sys.exit()
 
     cube_list, shape = smooth_and_interpolate(cube_list, cube_vmin, cube_vmax, cube_dv)
 
