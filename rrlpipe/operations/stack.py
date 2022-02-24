@@ -154,7 +154,7 @@ def smooth_and_interpolate(cube_list, vmin, vmax, dv,
 
 
 def run(path, line_list_file, cube_vmin, cube_vmax, cube_dv, 
-        rms_vmin, rms_vmax, line_vmin, line_vmax, output='stack.fits'):
+        rms_vmin, rms_vmax, line_vmin, line_vmax, max_deg=0, output='stack.fits'):
     """
     """
 
@@ -162,7 +162,8 @@ def run(path, line_list_file, cube_vmin, cube_vmax, cube_dv,
 
     line_list = utils.make_line_list(sdfitsfiles, line_list_file, 
                                      rms_vmin, rms_vmax, 
-                                     line_vmin, line_vmax)
+                                     line_vmin, line_vmax, 
+                                     max_deg=max_deg)
 
     # Stack only the cubes with low rms and flat bandpass over line free channels.
     cube_list = [ f'{os.path.splitext(fnm)[0]}_cube_vel.fits' \

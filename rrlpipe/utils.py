@@ -234,13 +234,15 @@ def grid_map_data(sdfitsfile, nx, ny, scale, xcntr, ycntr):
     return cubefile
 
 
-def make_line_list(sdfitsfiles, line_list_file, rms_vmin, rms_vmax, line_vmin, line_vmax):
+def make_line_list(sdfitsfiles, line_list_file, rms_vmin, rms_vmax, 
+                   line_vmin, line_vmax, max_deg=0):
     """
     """
 
     # Fields for the line list.
     dtype = [('spw', int), ('pol', int), ('n', int), 
-             ('rms', float), ('use', bool), ('file', '<U256')]
+             ('rms', float), ('mean', float), 
+             ('use', bool), ('file', '<U256')]
     line_list = np.zeros(len(sdfitsfiles), dtype=dtype)
 
     for i,f in enumerate(sdfitsfiles):
@@ -258,7 +260,8 @@ def make_line_list(sdfitsfiles, line_list_file, rms_vmin, rms_vmax, line_vmin, l
         ch_min,ch_max = np.sort([ch_min,ch_max])
         avg = np.ma.masked_invalid(np.nanmean(table['DATA'], axis=0))
         rms = avg[ch_min:ch_max+1].std()
-        line_list[i] = (spw, pol, n, rms, 0, f)
+        avg = avg[ch_min:ch_max+1].mean()
+        line_list[i] = (spw, pol, n, rms, avg, 0, f)
 
     # Compute statistics across all files.
     rms_avg = np.nanmean(line_list['rms'])
@@ -273,10 +276,10 @@ def make_line_list(sdfitsfiles, line_list_file, rms_vmin, rms_vmax, line_vmin, l
     # If the order is greater than zero,
     # then do not use the line.
     for i,row in enumerate(line_list):
-        if row[4]:
+        if row[5]:
             
             sdfits = sd_fits.SDFITS()
-            sdfits.load(row[5])
+            sdfits.load(row[6])
             table = sdfits.hdu[1][:]
             freq = spectral_axis.compute_freq_axis(table, chstart=1, chstop=-1, apply_doppler=True)
             nu_min = crrls.vel2freq(freq[0].to('MHz').value.mean(), line_vmin.to('m/s').value)
@@ -303,8 +306,8 @@ def make_line_list(sdfitsfiles, line_list_file, rms_vmin, rms_vmax, line_vmin, l
                 fit = mod.fit(ym, pars, x=xm)
                 bic[deg] = fit.bic
                 aic[deg] = fit.aic
-            if np.argmin(aic) > 0 and np.argmin(bic) > 0:
-                line_list[i][4] = False
+            if np.argmin(aic) > max_deg and np.argmin(bic) > max_deg:
+                line_list[i][5] = False
     
     # Save as a text file for later use.
     df = pd.DataFrame(line_list)
