@@ -25,13 +25,63 @@ def get_continuum(freq, data, poly_order, blanks=None):
     return pval
 
 
-def remove_continuum(freq, data, poly_order, blanks=None):
+def remove_continuum(freq, data, poly_order, blanks=None, keep_cont=False):
     """
     """
     
     pval = get_continuum(freq, data, poly_order, blanks=blanks)
-    
-    return (data - pval)
+
+    out = (data - pval)
+
+    if keep_cont:
+        out += pval.mean()    
+
+    return out
+
+
+def cal_gh(table, poly_order, lines, gh, tcal):
+    """
+    gh : array
+        [H, G, Tsys]
+    """
+
+    # Find lines that will be blanked.
+    freq = spectral_axis.compute_freq_axis(table)
+    blanks = []
+    for line,(dv,z) in lines.items():
+        l = utils.find_rrls(freq[0], line, dv, z=z)
+        for k,v in l.items():
+            blanks.append(l[k])
+
+    # Find rows with the noise diode on and off.
+    mask_on = sd_fits_utils.get_table_mask(table, cal='T')
+    mask_off = sd_fits_utils.get_table_mask(table, cal='F')
+    assert(mask_on.sum() == mask_off.sum())
+
+    # Remove blanked rows.
+    mask = np.ma.masked_invalid(table['DATA']).mask.any(axis=1)
+    print(f"Percentage of blanked data: {mask.sum()/mask.shape[0]*100:.2f} %")
+    table = table[~mask]
+
+    # Calibrate all rows.
+    cal_data = np.ma.empty(table['DATA'].shape, dtype=table['DATA'].dtype)
+    for i in range(len(table)):
+        p = np.ma.masked_invalid(table['DATA'][i])
+        p2 = p * p
+        ta = gh[0]*p2 + gh[1]*p + gh[2]
+        if table['CAL'][i] == 'T':
+            ta -= tcal
+        tl = remove_continuum(freq[i],
+                              np.ma.masked_invalid(ta),
+                              poly_order,
+                              blanks, keep_cont=True)
+
+        cal_data[i] = tl
+
+    # Update the table data column.
+    table['DATA'] = cal_data
+
+    return table
 
 
 def cal_no_ref(table, poly_order, lines, tcal):
@@ -131,7 +181,8 @@ def run(args, mode='no-ref'):
     """
 
     modes = {'no-ref': cal_no_ref,
-             'refsmo': cal_refsmo}
+             'refsmo': cal_refsmo,
+             'gh': cal_gh,}
 
     table = modes[mode](*args)
 
