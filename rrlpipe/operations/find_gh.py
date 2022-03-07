@@ -3,6 +3,8 @@ import os
 import subprocess
 import numpy as np
 
+from scipy.ndimage import binary_dilation
+
 from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.convolution import convolve, Gaussian2DKernel
@@ -21,6 +23,7 @@ def run(table, model_file, cleanup=True):
         os.remove(file_tmp)
     except FileNotFoundError:
         pass
+
     # Write table to grid.
     sd_fits_io.write_sdfits(file_tmp, table)
 
@@ -32,6 +35,7 @@ def run(table, model_file, cleanup=True):
     args = ['gbtgridder', '--noline', '--nocont', '--noweight',
             '-o', cube_out, '-c', f'{ch0}:{chf}', 
             file_tmp]
+    
     subprocess.run(args)
     cube_file = cube_out + '_cube.fits'
 
@@ -61,20 +65,32 @@ def run(table, model_file, cleanup=True):
     wcs_cont = WCS(head_cont)
 
     # Define the convolution kernel to match the GBT observations.
-    kwidth = 0.42466090014400953 * (np.sqrt(head['BMAJ']**2 - head_cont['BMAJ'])/head_cont['CDELT2'])
+    #print(f'Target beam: {head["BMAJ"]*60}')
+    #print(f'Model beam: {head_cont["BMAJ"]*60}')
+    kwidth = 0.42466090014400953 * (np.sqrt(head['BMAJ']**2. - head_cont['BMAJ']**2.)/abs(head_cont['CDELT2']))
+    #print(f'Kernel width: {kwidth}')
     kernel = Gaussian2DKernel(kwidth)
 
     # Convolve the model continuum map.
     cont_cnv = convolve(cont[0], kernel, boundary='fill')
+    cont_cnv = np.ma.masked_invalid(cont_cnv)
 
     # Reproject the GBT continuum.
     cont_obs_rpj = reproject_interp((cont_obs, wcs.celestial), wcs_cont.celestial, 
                                     return_footprint=False, shape_out=cont_cnv.shape)
-    
+    cont_obs_rpj = np.ma.masked_invalid(cont_obs_rpj)
+    cont_obs_rpj = np.ma.masked_where(cont_obs_rpj == 0, cont_obs_rpj)
+
+    # Combine and dilate masks.
+    mask = cont_cnv.mask | cont_obs_rpj.mask
+    mask = binary_dilation(mask, iterations=2)
+    cont_cnv = np.ma.masked_where(mask, cont_cnv)
+    cont_obs_rpj = np.ma.masked_where(mask, cont_obs_rpj)
+
     # Define power and temperature vectors.
     # Avoid edge pixels since the model map is not big enough.
-    tsou = cont_cnv[20:-20,20:-20].flatten()
-    psou = cont_obs_rpj[20:-20,20:-20].flatten()
+    tsou = cont_cnv[20:-20,20:-20].compressed()
+    psou = cont_obs_rpj[20:-20,20:-20].compressed()
 
     # Fit a quadratic polynomial to the relation.
     # The first term is H, the second G and 
