@@ -100,6 +100,11 @@ def stack_cubes(cubes, rms_vmin, rms_vmax, output, overwrite=False,
                                     rms_vmax).std(axis=0).value
         n[i] = cube.header['PQN']
 
+    # Find the mean of the stack, and bring all the cubes to the same level.
+    mean = np.ma.average(stack, axis=(0,1), weights=1./np.ma.power(rms, 2.))
+    mdiff = mean - np.ma.average(stack, axis=(1), weights=1./np.ma.power(rms, 2.))
+    stack += mdiff[:,np.newaxis,:,:]
+
     # Average the cubes using their rms as weight.
     stack = np.ma.average(stack, axis=0, weights=1./np.ma.power(rms, 2.))
     # Make a principal quantum number map.
@@ -111,7 +116,8 @@ def stack_cubes(cubes, rms_vmin, rms_vmax, output, overwrite=False,
 
     # Write the n map.
     n_map_out = f'{os.path.splitext(output)[0]}_n.fits'
-    fits.writeto(n_map_out, n_map.filled(np.nan), header=cube.wcs.celestial.to_header())
+    fits.writeto(n_map_out, n_map.filled(np.nan), header=cube.wcs.celestial.to_header(),
+                 overwrite=overwrite)
 
 
 
@@ -154,7 +160,8 @@ def smooth_and_interpolate(cube_list, vmin, vmax, dv,
 
 
 def run(path, line_list_file, cube_vmin, cube_vmax, cube_dv, 
-        rms_vmin, rms_vmax, line_vmin, line_vmax, max_deg=0, output='stack.fits'):
+        rms_vmin, rms_vmax, line_vmin, line_vmax, max_deg=0, 
+        output='stack.fits', shape=None):
     """
     """
 
@@ -166,7 +173,7 @@ def run(path, line_list_file, cube_vmin, cube_vmax, cube_dv,
                                      max_deg=max_deg)
 
     # Stack only the cubes with low rms and flat bandpass over line free channels.
-    cube_list = [ f'{os.path.splitext(fnm)[0]}_cube_vel.fits' \
+    cube_list = [ f'{os.path.splitext(fnm)[0]}_cube_vel_vi.fits' \
                   for fnm in line_list['file'][line_list['use']] ]
     print(f"Will stack {len(cube_list)}/{len(line_list)} cubes.")
     if len(cube_list) == 0:
