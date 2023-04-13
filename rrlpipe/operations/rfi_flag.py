@@ -6,7 +6,9 @@ import numpy as np
 import fitsio
 
 from astropy.io import fits
+from astropy.convolution import Box1DKernel
 
+from rrlpipe import utils
 from groundhog import sd_fits_io, spectral_axis
 
 
@@ -49,7 +51,7 @@ def prepare_table(table, output, header):
                          ('SCAN', '>i4'), ('PLNUM', '>i2'), ('FDNUM', '>i2')])
     new_table = np.empty(len(table), dtype=ao_dtype)
 
-    freq = spectral_axis.compute_freq_axis(table)
+    freq = spectral_axis.compute_spectral_axis(table)
 
     # Loop over rows normalizing the data column.
     new_data = np.empty(aof_shape, dtype=float)
@@ -139,7 +141,7 @@ def repeat_or(mask, n=3):
     return k
 
 
-def run(table, strategy, path, header):
+def run(table, strategy, path, header, interpolate_nans=False):
     """
     """
 
@@ -160,10 +162,17 @@ def run(table, strategy, path, header):
     flags = hdu[1]['DATA'][:][:,0,0,0,:] == 1e20
     # Extend the flags.
     flags = extend_flags(flags, threshold=1.1)
-    print(f"Number of channels totally flagged {(flags.sum(axis=0)/len(flags) == 1).sum()}/{flags.shape[1]}")
+    nchanflag = (flags.sum(axis=0)/len(flags) == 1).sum()
+    print(f"Number of channels totally flagged {nchanflag}/{flags.shape[1]}")
     # Apply flags to the data.
     masked_data = np.ma.masked_where(flags, table['DATA'])
     table['DATA'] = masked_data.filled(np.nan)
+    
+    if interpolate_nans:
+        # Interpolate NaN channels.
+        kernel = Box1DKernel(nchanflag)
+        table = utils.interpolate_flagged_table(table, kernel)
+
     # Write the flagged data.
     try:
         os.remove(file_out)

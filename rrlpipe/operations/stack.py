@@ -101,9 +101,9 @@ def stack_cubes(cubes, rms_vmin, rms_vmax, output, overwrite=False,
         n[i] = cube.header['PQN']
 
     # Find the mean of the stack, and bring all the cubes to the same level.
-    mean = np.ma.average(stack, axis=(0,1), weights=1./np.ma.power(rms, 2.))
-    mdiff = mean - np.ma.average(stack, axis=(1), weights=1./np.ma.power(rms, 2.))
-    stack += mdiff[:,np.newaxis,:,:]
+    #mean = np.ma.average(stack, axis=(0,1), weights=1./np.ma.power(rms, 2.))
+    #mdiff = mean - np.ma.average(stack, axis=(1), weights=1./np.ma.power(rms, 2.))
+    #stack += mdiff[:,np.newaxis,:,:]
 
     # Average the cubes using their rms as weight.
     stack = np.ma.average(stack, axis=0, weights=1./np.ma.power(rms, 2.))
@@ -167,19 +167,20 @@ def run(path, line_list_file, cube_vmin, cube_vmax, cube_dv,
 
     sdfitsfiles = glob.glob(f'{path}/spw_*_pol_*_n_*_rfi.fits')
 
+    print(f'Will check {len(sdfitsfiles)} data sets.')
     line_list = utils.make_line_list(sdfitsfiles, line_list_file, 
                                      rms_vmin, rms_vmax, 
                                      line_vmin, line_vmax, 
                                      max_deg=max_deg)
 
-    # Stack only the cubes with low rms and flat bandpass over line free channels.
-    cube_list = [ f'{os.path.splitext(fnm)[0]}_cube_vel_vi.fits' \
-                  for fnm in line_list['file'][line_list['use']] ]
-    print(f"Will stack {len(cube_list)}/{len(line_list)} cubes.")
-    if len(cube_list) == 0:
-        print('No cubes to stack.')
-        sys.exit()
+    ## Stack only the cubes with low rms and flat bandpass over line free channels.
+    #cube_list = [ f'{os.path.splitext(fnm)[0]}_cube_vel.fits' \
+    #              for fnm in line_list['file'][line_list['use']] ]
+    #print(f"Will stack {len(cube_list)}/{len(line_list)} cubes.")
+    #if len(cube_list) == 0:
+    #    print('No cubes to stack.')
+    #    sys.exit()
 
-    cube_list, shape = smooth_and_interpolate(cube_list, cube_vmin, cube_vmax, cube_dv)
+    #cube_list, shape = smooth_and_interpolate(cube_list, cube_vmin, cube_vmax, cube_dv)
 
-    stack_cubes(cube_list, rms_vmin, rms_vmax, f'{path}/{output}', shape=shape)
+    #stack_cubes(cube_list, rms_vmin, rms_vmax, f'{path}/{output}', shape=shape)

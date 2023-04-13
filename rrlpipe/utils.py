@@ -49,7 +49,7 @@ def flag_rfi(sdfitsfile, strategy):
     sdfits.load(sdfitsfile)
     table = sdfits.hdu[1][:]
     head = sdfits.hdu[1].read_header()    
-    freq = spectral_axis.compute_freq_axis(table, chstart=1, chstop=-1, apply_doppler=True)
+    freq = spectral_axis.compute_spectral_axis(table, chstart=1, chstop=-1, apply_doppler=True)
 
     # Shape of the data array to be compatible with AOFlagger.
     aof_shape = (head['NAXIS2'],1,1,1,freq.shape[1])
@@ -159,7 +159,7 @@ def flatten_bandpass(sdfitsfile, v_line, dv_line, poly_order):
     sdfits = sd_fits.SDFITS()
     sdfits.load(sdfitsfile)
     table = sdfits.hdu[1][:]
-    freq = spectral_axis.compute_freq_axis(table, 
+    freq = spectral_axis.compute_spectral_axis(table, 
                                            chstart=1, chstop=-1, 
                                            apply_doppler=True)
 
@@ -221,7 +221,7 @@ def grid_map_data(sdfitsfile, nx, ny, scale, xcntr, ycntr):
 
     fileout = f"{os.path.splitext(sdfitsfile)[0]}"
 
-    args = ['gbtgridder', '--noline', '--nocont',
+    args = ['gbtgridder', "--autoConfirm",#'--noline', '--nocont',
             '-o', fileout, '--clobber', 
             '--size', f'{nx}', f'{ny}', '--pixelwidth', f'{scale}',
             '--mapcenter', f'{xcntr}', f'{ycntr}',
@@ -252,13 +252,13 @@ def make_line_list(sdfitsfiles, line_list_file, rms_vmin, rms_vmax,
         sdfits = sd_fits.SDFITS()
         sdfits.load(f)
         table = sdfits.hdu[1][:]
-        freq = spectral_axis.compute_freq_axis(table, chstart=1, chstop=-1, apply_doppler=True)
+        freq = spectral_axis.compute_spectral_axis(table, chstart=1, chstop=-1, apply_doppler=True)
         nu_min = crrls.vel2freq(freq[0].to('MHz').value.mean(), rms_vmin.to('m/s').value)
         nu_max = crrls.vel2freq(freq[0].to('MHz').value.mean(), rms_vmax.to('m/s').value)
         ch_min = np.argmin(abs(freq[0].to('MHz').value - nu_min))
         ch_max = np.argmin(abs(freq[0].to('MHz').value - nu_max))
         ch_min,ch_max = np.sort([ch_min,ch_max])
-        avg = np.ma.masked_invalid(np.nanmean(table['DATA'], axis=0))
+        avg = np.ma.masked_invalid(table['DATA']).mean(axis=0)
         rms = avg[ch_min:ch_max+1].std()
         avg = avg[ch_min:ch_max+1].mean()
         line_list[i] = (spw, pol, n, rms, avg, 0, f)
@@ -281,13 +281,13 @@ def make_line_list(sdfitsfiles, line_list_file, rms_vmin, rms_vmax,
             sdfits = sd_fits.SDFITS()
             sdfits.load(row[6])
             table = sdfits.hdu[1][:]
-            freq = spectral_axis.compute_freq_axis(table, chstart=1, chstop=-1, apply_doppler=True)
+            freq = spectral_axis.compute_spectral_axis(table, chstart=1, chstop=-1, apply_doppler=True)
             nu_min = crrls.vel2freq(freq[0].to('MHz').value.mean(), line_vmin.to('m/s').value)
             nu_max = crrls.vel2freq(freq[0].to('MHz').value.mean(), line_vmax.to('m/s').value)
             ch_min = np.argmin(abs(freq[0].to('MHz').value - nu_min))
             ch_max = np.argmin(abs(freq[0].to('MHz').value - nu_max))
             ch_min,ch_max = np.sort([ch_min,ch_max])
-            avg = np.nanmean(table['DATA'], axis=0)
+            avg = np.ma.masked_invalid(table['DATA']).mean(axis=0)
             x = freq[0].to('MHz').value
             x -= x.mean()
             y = avg
@@ -327,7 +327,7 @@ def make_report(sdfitsfile):
     sdfits.make_summary()
 
     table = sdfits.hdu[1][:]
-    freq = spectral_axis.compute_freq_axis(table, chstart=1, chstop=-1, apply_doppler=True)
+    freq = spectral_axis.compute_spectral_axis(table, chstart=1, chstop=-1, apply_doppler=True)
 
     fig = plt.figure(dpi=150, frameon=False)
     ax1 = fig.add_subplot(211)
@@ -357,7 +357,7 @@ def split_rrls(sdfitsfile, line, vel_range, z=0):
     sdfits.load(sdfitsfile)
     sdfits.make_summary()
 
-    freq = spectral_axis.compute_freq_axis(sdfits.hdu[1][:], 
+    freq = spectral_axis.compute_spectral_axis(sdfits.hdu[1][:], 
                                            chstart=1, chstop=-1, 
                                            apply_doppler=True)
 

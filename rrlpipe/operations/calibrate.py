@@ -46,7 +46,7 @@ def cal_gh(table, poly_order, lines, gh, tcal):
     """
 
     # Find lines that will be blanked.
-    freq = spectral_axis.compute_freq_axis(table)
+    freq = spectral_axis.compute_spectral_axis(table)
     blanks = []
     for line,(dv,z) in lines.items():
         l = utils.find_rrls(freq[0], line, dv, z=z)
